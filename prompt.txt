@@ -1,0 +1,182 @@
+generate a codeforces type tempelate for the question that i am going to post next where the main function will accept the input and call the solve function with the parameters. leave solve empty for me to fill in the logic. The solve will return the answer and callee will print it. Modify the solution.py and solution.cpp directly, don't create any new file. Don't generate a plan or a separate file. Just edit the solution.py and .cpp directly
+
+
+Please create a comprehensive, multi-slide presentation visually breaking down the core algorithmic frameworks for the 14 problem patterns I recently solved after receiving help.
+CRITICAL INSTRUCTION: You must dedicate 2 to 3 separate slides to EACH problem. Do not cram multiple diagrams or problems onto a single slide. The focus must be entirely on explaining the underlying methods and frameworks so clearly that they sit in my memory for future contests.
+For each problem, visually map out the step-by-step framework, showing exactly how the data structures operate, how the internal state is tracked, and the core greedy or mathematical logic
+
+
+
+Second account
+foforo1708@fixscal.com
+114636a3
+
+pick a problem from this list that falls under the 10 patterns we have studied
+
+1) MSB Squeeze - MSB dictates everything, optimising/reducing MSB first ensures that the answer is as better as other alternatives till the bit being processed.
+2) Heap
+3) Interval Overlap
+4) Monotonic Stack
+5) Maximum Gap 
+6) Separating Indices
+7) Wall pattern - We do some precompute on left and right side of index i. Then assume a wall at index i and calculate the answer for 
+   that wall using the precomputed left and right parts. In the end, we can take the global best of all such walls.
+8) Binary Search on answer
+9) Answer Inversion - Instead of iterating the array to calculate answer. We think about what is the range of values that each element 
+   can contribute to. And then combine those ranges to find an optimum answer. 
+10) State Machine DP - Picking an optima locally can lock out an even better answer later. So we have to pick the best value for each 
+state at ai and then use all those states to build a optimal answer for each state at aj
+11) DFS
+12) Complementary State Tracking
+
+Key instruction-
+1) Analyse the problem carefully before putting into a pattern, dont just put because the tools are similar like prefix/suffix array.
+2) Pick all the problems that you can find for this set. Not just one. But dont force also, if the problem does not fit, it does not fit. Dont try to put problems of some other pattern into other pattern.
+3) Just tell the problem and pattern - don't reveal solution or spoil it with hints.
+
+(function extractUnsolvedProblemIds() {
+    // Select all the table rows containing problems
+    const rows = document.querySelectorAll('.problems tr:not(.first-row)');
+    const unsolvedProblemIds = []; 
+
+    rows.forEach(row => {
+        // 1. Check if the row is marked as solved
+        // Codeforces usually adds the class 'accepted-problem' to rows of solved problems
+        if (row.classList.contains('accepted-problem')) {
+            return; // Skip this row
+        }
+
+        // 2. Alternatively, check if the status cell contains a checkmark/accepted status
+        const statusCell = row.querySelector('td.status-cell');
+        if (statusCell && statusCell.querySelector('.solved-accepted')) {
+            return; // Skip this row
+        }
+
+        // 3. Extract the ID if not solved
+        const idCell = row.querySelector('td.id a');
+        if (idCell) {
+            const rawId = idCell.innerText.trim();
+            if (rawId) {
+                unsolvedProblemIds.push(rawId);
+            }
+        }
+    });
+
+    if (unsolvedProblemIds.length > 0) {
+        console.log(`%c✔ Found ${unsolvedProblemIds.length} unsolved problems:`, "color: #00ff00; font-weight: bold; font-size: 14px;");
+        console.log(unsolvedProblemIds.join('\n'));
+        return unsolvedProblemIds;
+    } else {
+        console.log("ℹ No unsolved problems found on this page, or the structure is different.");
+    }
+})();
+
+
+
+(async () => {
+    const handle = window.location.pathname.split('/').pop();
+    console.log(`Deep-diving into problem stats for ${handle}...`);
+    
+    try {
+        // Fetch basic info
+        const infoRes = await fetch(`https://codeforces.com/api/user.info?handles=${handle}`);
+        const infoJson = await infoRes.json();
+        
+        // Fetch contest history
+        const ratingRes = await fetch(`https://codeforces.com/api/user.rating?handle=${handle}`);
+        const ratingJson = await ratingRes.json();
+        
+        // Fetch all submissions
+        const statusRes = await fetch(`https://codeforces.com/api/user.status?handle=${handle}`);
+        const statusJson = await statusRes.json();
+        
+        if (infoJson.status !== "OK" || ratingJson.status !== "OK" || statusJson.status !== "OK") {
+            throw new Error("API returned an error.");
+        }
+
+        const user = infoJson.result[0];
+        const history = ratingJson.result;
+        const submissions = statusJson.result;
+
+        // Process solved problems (verdict: OK) and avoid duplicating same problem solved multiple times
+        const solvedProblems = new Set();
+        const ratingDistribution = {};
+        const tagDistribution = {};
+        let totalSubmissions = submissions.length;
+        let correctSubmissions = 0;
+
+        submissions.forEach(sub => {
+            if (sub.verdict === "OK") {
+                correctSubmissions++;
+                const prob = sub.problem;
+                const probId = `${prob.contestId}${prob.index}`;
+                
+                if (!solvedProblems.has(probId)) {
+                    solvedProblems.add(probId);
+                    
+                    // Track by difficulty rating
+                    if (prob.rating) {
+                        ratingDistribution[prob.rating] = (ratingDistribution[prob.rating] || 0) + 1;
+                    }
+                    
+                    // Track by topic tags
+                    if (prob.tags && prob.tags.length > 0) {
+                        prob.tags.forEach(tag => {
+                            tagDistribution[tag] = (tagDistribution[tag] || 0) + 1;
+                        });
+                    }
+                }
+            }
+        });
+
+        // Sort rating distribution cleanly
+        const sortedRatings = Object.keys(ratingDistribution)
+            .sort((a, b) => Number(a) - Number(b))
+            .reduce((acc, key) => ({ ...acc, [key]: ratingDistribution[key] }), {});
+
+        // Sort tags by frequency
+        const sortedTags = Object.entries(tagDistribution)
+            .sort((a, b) => b[1] - a[1])
+            .reduce((acc, [key, val]) => ({ ...acc, [key]: val }), {});
+
+        const profileSummary = {
+            handle: user.handle,
+            currentRank: user.rank || "Unrated",
+            maxRank: user.maxRank || "Unrated",
+            currentRating: user.rating || 0,
+            maxRating: user.maxRating || 0,
+            metrics: {
+                uniqueProblemsSolved: solvedProblems.size,
+                submissionAccuracy: totalSubmissions > 0 ? ((correctSubmissions / totalSubmissions) * 100).toFixed(1) + "%" : "0%"
+            },
+            recentContests: history.slice(-5).map(c => ({
+                contest: c.contestName,
+                rank: c.rank,
+                delta: c.newRating - c.oldRating,
+                rating: c.newRating
+            })).reverse(),
+            solvedCountByDifficulty: sortedRatings,
+            topSolvedTags: sortedTags
+        };
+
+        console.clear();
+        console.log("%c Data extraction complete! Paste this block back into our chat: ", "background: #222; color: #bada55; padding: 5px; font-weight: bold;");
+        console.log(JSON.stringify(profileSummary, null, 2));
+
+    } catch (error) {
+        console.error("Extraction failed:", error);
+    }
+})();
+
+
+
+1400-
+2045C
+2171D
+
+1500-
+1881E
+
+
+New Pattern-
+2084C
